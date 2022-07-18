@@ -16,6 +16,20 @@ class Requirement:
 RequirementFunc = Callable[[int], Requirement]
 
 
+def calc_node_times(
+    p_city_id: int,
+    p_td: time_t,
+    city_id: int,
+    req: Requirement,
+    T: TravelTimeFunc,
+):
+    ta = p_td + T(p_city_id, city_id)
+    if ta < req.ta:
+        ta = min(ta + req.wt, req.ta)
+    td = ta + req.op
+    return ta, td
+
+
 @dataclass(frozen=True)
 class Node:
     city_id: int
@@ -31,10 +45,7 @@ class Node:
         parent_nodes = parent.parents + [parent.city_id]
         child_nodes = list(parent.children)
         child_nodes.remove(city_id)
-        ta = parent.td + T(parent.city_id, city_id)
-        if ta < req.ta:
-            ta = min(ta + req.wt, req.ta)
-        td = ta + req.op
+        ta, td = calc_node_times(parent.city_id, parent.td, city_id, req, T)
         return cls(city_id, parent_nodes, child_nodes, ta, td)
 
     def is_leaf(self):
@@ -54,3 +65,6 @@ class Node:
                 continue
             child_nodes.append(node)
         return child_nodes
+
+
+NodeEvaluator = Callable[[Node, int, int, RequirementFunc, TravelTimeFunc], time_t]

@@ -1,6 +1,30 @@
 from typing import Optional
 
-from .types import Node, RequirementFunc, TravelTimeFunc
+from .types import Node, Requirement, RequirementFunc, TravelTimeFunc, calc_node_times
+
+
+def simple_evaluation(
+    node: Node, start: int, end: int, R: RequirementFunc, T: TravelTimeFunc
+):
+    return node.td
+
+
+def heuristic_evaluation(
+    node: Node, start: int, end: int, R: RequirementFunc, T: TravelTimeFunc
+):
+    p_city_id, td = (node.city_id, node.td)
+
+    def sort_func(c_r: tuple[int, Requirement]):
+        req = c_r[1]
+        return req.td - req.op
+
+    remained = sorted(((c, R(c)) for c in node.children), key=sort_func)
+
+    for (city_id, req) in remained:
+        _, td = calc_node_times(p_city_id, td, city_id, req, T)
+        p_city_id = city_id
+
+    return td + T(p_city_id, end)
 
 
 def solve(
@@ -30,7 +54,11 @@ def solve(
         # branch
         child_nodes = n.generate_child_nodes(R, T, only_valid=True)
         # bound
-        child_nodes = [cn for cn in child_nodes if cn.td < best_score]
+        child_nodes = [
+            cn
+            for cn in child_nodes
+            if heuristic_evaluation(cn, start, end, R, T) < best_score
+        ]
 
         V.extend(child_nodes)
 
